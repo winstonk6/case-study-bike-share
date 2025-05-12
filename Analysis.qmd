@@ -1,0 +1,396 @@
+---
+title: "Case study: How does a bike-share navigate speedy success?"
+author: "Winston Koh"
+format: 
+  html:
+    toc: true
+    embed-resources: true
+    df-print: kable
+---
+
+```{r setup}
+#| include: false
+
+library(tidyverse)
+library(arrow)
+library(janitor)
+library(leaflet)
+options(dplyr.summarise.inform = FALSE)
+```
+
+```{r combine files}
+#| include: false
+#| eval: false
+
+data01 <- read_csv("202401-divvy-tripdata.csv")
+data02 <- read_csv("202402-divvy-tripdata.csv")
+data03 <- read_csv("202403-divvy-tripdata.csv")
+data04 <- read_csv("202404-divvy-tripdata.csv")
+data05 <- read_csv("202405-divvy-tripdata.csv")
+data06 <- read_csv("202406-divvy-tripdata.csv")
+data07 <- read_csv("202407-divvy-tripdata.csv")
+data08 <- read_csv("202408-divvy-tripdata.csv")
+data09 <- read_csv("202409-divvy-tripdata.csv")
+data10 <- read_csv("202410-divvy-tripdata.csv")
+data11 <- read_csv("202411-divvy-tripdata.csv")
+data12 <- read_csv("202412-divvy-tripdata.csv")
+
+# Combine tables and save
+data <- rbind(data01, data02, data03, data04, data05, data06, 
+              data07, data08, data09, data10, data11, data12)
+
+write_parquet(data, "combined2024-divvy-tripdata.parquet")
+```
+
+```{r raw combined data}
+#| include: false
+#| eval: false
+
+data <- read_parquet("combined2024-divvy-tripdata.parquet")
+
+# Preview data
+glimpse(data)
+```
+
+```{r cleaning}
+#| include: false
+#| eval: false
+
+data2 <- data |> 
+  mutate(
+    # Convert categorical vars to factors
+    start_station_name = as_factor(start_station_name),
+    start_station_id = as_factor(start_station_id),
+    end_station_name = as_factor(end_station_name),
+    end_station_id = as_factor(end_station_id),
+    member_casual = as_factor(str_to_title(member_casual)),
+    rideable_type = rideable_type |> 
+      str_replace("_", " ") |> 
+      str_to_title() |> 
+      as_factor(),
+    
+    # Set time zone
+    started_at = force_tz(started_at, "America/Chicago"),
+    ended_at = force_tz(ended_at, "America/Chicago"),
+    
+    # Make new columns
+    day_of_week = started_at |> 
+      weekdays() |> 
+      as_factor() |> 
+      fct_recode(Sun = "Sunday",
+                 Mon = "Monday",
+                 Tue = "Tuesday",
+                 Wed = "Wednesday",
+                 Thu = "Thursday",
+                 Fri = "Friday",
+                 Sat = "Saturday") |> 
+      fct_relevel("Sun", "Mon", "Tue", "Wed", "Thu", "Fri"),
+    start_hour = as_factor(hour(started_at)),
+    month = as_factor(month(started_at)),
+    ride_length = difftime(ended_at, started_at),
+  ) |> 
+  
+  # Remove bad values
+  filter(ride_length > 0)
+
+write_parquet(data2, "combined2024-divvy-tripdata_clean.parquet")
+```
+
+# Analyze Data
+
+```{r}
+#| include: false
+
+data2 <- read_parquet("combined2024-divvy-tripdata_clean.parquet")
+glimpse(data2)
+```
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual) |> 
+  summarise(Rides = n()) |> 
+  mutate(Proportion = Rides/nrow(data2))
+```
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual) |> 
+  summarise(n = n()) |> 
+  mutate(prop = n / nrow(data2)) |> 
+  ggplot(aes(x = "", y = n, fill = member_casual)) +
+  geom_bar(stat = "identity") +
+  coord_polar("y", start=0) +
+  geom_text(
+    aes(label = paste0(round(prop, 2) * 100, "%")), 
+    position = position_stack(vjust=0.5),
+    size = 6
+  ) +
+  labs(x = NULL, y = NULL, fill = NULL,
+       title = "Proportion of Rides by Customer Type",
+       subtitle = "Total # of Rides = 5,859,845") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        plot.subtitle = element_text(hjust = 0.5, size = 12))
+```
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual) |> 
+  summarise(median_duration = median(ride_length)) |> 
+  ggplot(aes(x = member_casual, y = as.numeric(median_duration)/60, fill = member_casual)) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  labs(x = "Customer Type",
+       y = "Duration (min)",
+       title = "Median Ride Length") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        legend.position = "none")
+```
+
+## Trips by Hour
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual, start_hour) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = start_hour, y = n/1000)) +
+  geom_col() +
+  facet_grid(member_casual~.) +
+  theme_bw() +
+  labs(title = "Number of Trips by Hour",
+       x = "Hour",
+       y = "# of Trips (thousands)") +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 16),
+        axis.ticks = element_blank())
+```
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual, start_hour) |> 
+  summarise(median_duration = median(ride_length)) |> 
+  ggplot(aes(x = start_hour, y = as.numeric(median_duration)/60)) +
+  geom_bar(stat = "identity") +
+  facet_grid(member_casual ~ .) +
+  theme_bw() +
+  labs(x = "Hour",
+       y = "Duration (min)",
+       title = "Median Ride Length by Hour") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+```
+
+
+## Trips by Day of Week
+
+```{r}
+#| echo: false
+#| fig-width: 6
+#| fig-height: 6
+
+data2 |> 
+  group_by(member_casual, day_of_week) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = day_of_week, y = n/1000)) +
+  geom_col() +
+  facet_grid(member_casual ~ .) + #facet_wrap(~member_casual) +
+  theme_bw() +
+  labs(title = "Number of Trips by Day of Week",
+       x = "Day of Week",
+       y = "# of Trips (thousands)") +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 16),
+        axis.ticks = element_blank())
+```
+
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual, day_of_week) |> 
+  summarise(median_duration = median(ride_length)) |> 
+  ggplot(aes(x = day_of_week, y = as.numeric(median_duration)/60)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~member_casual) +
+  theme_bw() +
+  labs(x = "Day of Week",
+       y = "Duration (min)",
+       title = "Median Ride Length by Day of Week") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+```
+
+## Trips by Month
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual, month) |> 
+  summarise(n = n()) |> 
+  ggplot(aes(x = month, y = n/1000)) +
+  geom_col() +
+  facet_wrap(~member_casual) +
+  theme_bw() +
+  labs(title = "Number of Trips by Month",
+       x = "Month",
+       y = "# of Trips (thousands)") +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5, size = 16),
+        axis.ticks = element_blank())
+```
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual, month) |> 
+  summarise(median_duration = median(ride_length)) |> 
+  ggplot(aes(x = month, y = as.numeric(median_duration)/60)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~member_casual) +
+  theme_bw() +
+  labs(x = "Month",
+       y = "Duration (min)",
+       title = "Median Ride Length by Month") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+```
+
+## Rideable Type
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual, rideable_type) |> 
+  summarise(n = n()) |> 
+  mutate(
+    prop = if_else(member_casual == "Member", 
+                   n / sum(data2$member_casual == "Member"),
+                   n / sum(data2$member_casual == "Casual")
+                   )
+  ) |> 
+  ggplot(aes(x = "", y = n, fill = rideable_type)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~member_casual, scales = "free") +
+  coord_polar("y", start=0) +
+  geom_text(
+    aes(label = paste0(round(prop, 2) * 100, "%")), 
+    position = position_stack(vjust=0.5),
+    size = 4.5
+  ) +
+  labs(x = NULL, y = NULL, fill = NULL,
+       title = "Proportion of Rides by Rideable Type",
+       subtitle = "") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 16))#,
+        #plot.subtitle = element_text(hjust = 0.5, size = 12))
+```
+
+```{r}
+#| echo: false
+
+data2 |> 
+  group_by(member_casual, rideable_type) |> 
+  summarise(median_duration = median(ride_length)) |> 
+  ggplot(aes(x = rideable_type, y = as.numeric(median_duration)/60)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~member_casual) +
+  theme_bw() +
+  labs(x = "Type of Ride",
+       y = "Duration (min)",
+       title = "Median Ride Length by Rideable Type") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+```
+
+## Trips by Destination
+
+```{r}
+#| include: false
+
+# Number of trips by end location
+end <- data2 |> 
+  group_by(member_casual, end_station_id, end_station_name, end_lat, end_lng) |> 
+  summarise(n = n())
+```
+
+
+```{r}
+#| include: false
+
+# The same station can have multiple different coordinates
+# This table gives one coordinate for each station using the most frequently appearing coordinate
+end_locations <- data2 |> 
+  group_by(end_station_id, end_station_name, end_lat, end_lng) |> 
+  summarise(n = n()) |> 
+  ungroup() |> 
+  group_by(end_station_id) |> 
+  slice_max(n) |> 
+  ungroup() |> 
+  drop_na() |> 
+  select(-n)
+```
+
+### Casual Riders
+
+Top 20 destinations for casual riders
+
+```{r}
+#| echo: false
+
+casual_dest <- end |> 
+  filter(member_casual == "Casual") |> 
+  group_by(end_lat, end_lng) |> 
+  summarise(rides = sum(n)) |> 
+  arrange(desc(rides))
+
+casual_dest |> 
+  head(20) |> 
+  left_join(end_locations, c("end_lat", "end_lng")) |> 
+  leaflet() |> 
+	addTiles() |>
+	addCircles(
+	  lng = ~end_lng,
+	  lat = ~end_lat,
+	  weight = 5,
+	  radius = ~sqrt(rides),
+	  popup = ~end_station_name
+	)
+```
+
+### Members
+
+Top 20 destinations for members
+
+```{r}
+#| echo: false
+
+member_dest <- end |> 
+  filter(member_casual == "Member") |> 
+  group_by(end_lat, end_lng) |> 
+  summarise(rides = sum(n)) |> 
+  arrange(desc(rides))
+
+member_dest |> 
+  head(20) |> 
+  left_join(end_locations, c("end_lat", "end_lng")) |> 
+  leaflet() |> 
+	addTiles() |>
+	addCircles(
+	  lng = ~end_lng,
+	  lat = ~end_lat,
+	  weight = 5,
+	  radius = ~sqrt(rides),
+	  popup = ~end_station_name
+	)
+```
+
