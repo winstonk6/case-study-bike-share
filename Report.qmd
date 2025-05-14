@@ -199,7 +199,7 @@ data2 |>
         axis.ticks = element_blank())
 ```
 
-During the warmer months, members trips are slightly longer, while casual rider trips are much longer.
+Casual rider trips are much longer in the warmer months compared to the colder months. This difference is much smaller for members.
 
 ```{r duration month bar chart}
 #| echo: false
@@ -282,11 +282,13 @@ member_dest |>
 
 - Casual riders tend to take longer bike trips (especially on weekends and during the warmer months) to recreational areas on the waterfront. 
 - Members tend to take shorter, more consistently long trips to the downtown area.
-- This suggests that casual riders tend to take trips for leisure while members tend to take trips for commuting to work/school.
+- This suggests that casual riders tend to take trips for leisure while members tend to take trips for daily commuting.
 
 # Recommendations
 
-- Conduct a survey to confirm this hypothesis
-- Try to convert casual riders to use our bike-sharing service for commuting and regular use.
-- Use digital media to emphasize the benefits of commuting by bike over other forms of transit.
+- Collect more data to confirm this hypothesis.
+  - Analyzing customer demographic data that could help us better understand our customers.
+  - Conducting a survey would allow us to directly address our business question.
+- Use digital media to to convert casual riders to use our bike-sharing service for commuting and regular use.
+  - Emphasize benefits of commuting by bike (widespread availability, speed, etc.) compared to (or in addition to) other forms of transportation.
 
