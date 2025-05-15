@@ -22,7 +22,7 @@ options(dplyr.summarise.inform = FALSE)
 data2 <- read_parquet("combined2024-divvy-tripdata_clean.parquet")
 
 # Number of trips by end location
-end <- data2 |> 
+end_trips_n <- data2 |> 
   group_by(member_casual, end_station_id, end_station_name, end_lat, end_lng) |> 
   summarise(n = n())
 
@@ -30,12 +30,11 @@ end <- data2 |>
 # This table gives one coordinate for each station using the most frequently appearing coordinate
 end_locations <- data2 |> 
   group_by(end_station_id, end_station_name, end_lat, end_lng) |> 
-  summarise(n = n()) |> 
+  summarise(n = n()) |> # Number of trips for each combination of id, name, lat, lng
   ungroup() |> 
   group_by(end_station_id) |> 
-  slice_max(n) |> 
+  slice_max(n) |> # Most frequent lat and lng for each id
   ungroup() |> 
-  drop_na() |> 
   select(-n)
 ```
 
@@ -59,19 +58,12 @@ end_locations <- data2 |>
 
 ## Data
 
-We have data on bike trips from the year 2024 with the following data for each trip:
+We have [publicly available](https://divvybikes.com/system-data), anonymized data from Divvy for the year 2024. Each trip has the following data:
 
-- Customer type (Casual or Member)
+- Rider type (Casual or Member)
 - Trip start date + time and end date + time
 - Trip start location and end location
 - Ride type (Electric bike, Classic bike, or Electric scooter)
-
-## Data Considerations
-
-- The data originates from [Divvy's](https://divvybikes.com/system-data) publicly available data.
-- Each trip is anonymized.
-- Trips that were below 60 seconds in length are excluded.
-  - These are potentially false starts or users trying to re-dock a bike to ensure it was secure.
 
 ## Findings
 
@@ -249,15 +241,15 @@ The 20 most frequent destinations of casual rider trips are recreational areas b
 ```{r casual end dest}
 #| echo: false
 
-casual_dest <- end |> 
+casual_dest <- end_trips_n |> 
   filter(member_casual == "Casual") |> 
   group_by(end_lat, end_lng) |> 
   summarise(rides = sum(n)) |> 
-  arrange(desc(rides))
+  arrange(desc(rides)) |> 
+  left_join(end_locations, c("end_lat", "end_lng")) # Add available station names
 
 casual_dest |> 
   head(20) |> 
-  left_join(end_locations, c("end_lat", "end_lng")) |> 
   leaflet() |> 
 	addTiles() |>
 	addCircles(
@@ -276,15 +268,16 @@ The 20 most frequent destinations of member trips include the downtown area, tra
 ```{r member end dest}
 #| echo: false
 
-member_dest <- end |> 
+member_dest <- end_trips_n |> 
   filter(member_casual == "Member") |> 
   group_by(end_lat, end_lng) |> 
   summarise(rides = sum(n)) |> 
-  arrange(desc(rides))
+  arrange(desc(rides)) |> 
+  left_join(end_locations, c("end_lat", "end_lng"))
+
 
 member_dest |> 
   head(20) |> 
-  left_join(end_locations, c("end_lat", "end_lng")) |> 
   leaflet() |> 
 	addTiles() |>
 	addCircles(
@@ -298,15 +291,17 @@ member_dest |>
 
 ## Summary
 
-- Casual riders tend to take longer bike trips (especially on weekends and during the warmer months) to recreational areas on the waterfront. 
-- Members tend to take shorter, more consistently long trips to the downtown area.
-- This suggests that casual riders tend to take trips for leisure while members tend to take trips for daily commuting.
+Data suggests that casual riders tend to take trips mainly for leisure while members tend to take trips for daily commuting.
+
+- Casual riders occur more frequently and tend to be longer during weekends and warmer months. 
+The most common destinations are recreational areas on the waterfront. 
+- Member trips occur more frequently during weekdays, and have a spike in the morning hours. Trips are shorter and more consistent in duration compared to casual rider trips. 
+The most common destinations are in the downtown area. 
 
 ## Recommendations
 
-- Collect more data to confirm this hypothesis.
-  - Analyzing customer demographic data that could help us better understand our customers.
-  - Conducting a survey would allow us to directly address our business question.
-- Use digital media to to convert casual riders to use our bike-sharing service for commuting and regular use.
-  - Emphasize benefits of commuting by bike (widespread availability, speed, etc.) compared to (or in addition to) other forms of transportation.
+- Convince casual riders to daily bike commuters by emphasizing the benefits of commuting by bike instead of by other forms of transportation.
+  - e.g., Widespread availability, cost, speed, healthy physical activity
+- Create promotional deals for members for leisure activities and destinations 
+  - e.g., The aquarium, museums, restaurants
 
