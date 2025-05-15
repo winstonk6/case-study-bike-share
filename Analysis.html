@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
 width: 0.8em;
 margin: 0 0.8em 0.2em -1em;  vertical-align: middle;
 }
+
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+}
+pre.numberSource { margin-left: 3em; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -7128,7 +7162,14 @@ function asArray(value) {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#analyze-data" id="toc-analyze-data" class="nav-link active" data-scroll-target="#analyze-data">Analyze Data</a>
+  <li><a href="#background" id="toc-background" class="nav-link active" data-scroll-target="#background">Background</a>
+  <ul class="collapse">
+  <li><a href="#questions-of-interest" id="toc-questions-of-interest" class="nav-link" data-scroll-target="#questions-of-interest">Questions of Interest</a></li>
+  </ul></li>
+  <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
+  <li><a href="#data-cleaning" id="toc-data-cleaning" class="nav-link" data-scroll-target="#data-cleaning">Data Cleaning</a></li>
+  <li><a href="#data-exploration" id="toc-data-exploration" class="nav-link" data-scroll-target="#data-exploration">Data Exploration</a></li>
+  <li><a href="#analyze-data" id="toc-analyze-data" class="nav-link" data-scroll-target="#analyze-data">Analyze Data</a>
   <ul class="collapse">
   <li><a href="#trips-by-hour" id="toc-trips-by-hour" class="nav-link" data-scroll-target="#trips-by-hour">Trips by Hour</a></li>
   <li><a href="#trips-by-day-of-week" id="toc-trips-by-day-of-week" class="nav-link" data-scroll-target="#trips-by-day-of-week">Trips by Day of Week</a></li>
@@ -7140,6 +7181,8 @@ function asArray(value) {
   <li><a href="#members" id="toc-members" class="nav-link" data-scroll-target="#members">Members</a></li>
   </ul></li>
   </ul></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  <li><a href="#recommendations" id="toc-recommendations" class="nav-link" data-scroll-target="#recommendations">Recommendations</a></li>
   </ul>
 </nav>
 </div>
@@ -7170,9 +7213,459 @@ function asArray(value) {
 </header>
 
 
+<section id="background" class="level1">
+<h1>Background</h1>
+<p>Cyclistic is a fictional bike-share company in Chicago. Cyclistic has flexible pricing plans; customers who buy single-ride or full day passes are known as casual riders, and those who buy annual memberships are known as members.</p>
+<p>Annual members are much more profitable than casual riders, so the director of marketing believes the company’s future success depends on maximizing the number of annual memberships.</p>
+<p>In order to design a new marketing strategy to convert casual riders into annual members, we need to better understand how annual members and casual riders differ, why casual riders would buy a membership, and how digital media could affect their marketing tactics.</p>
+<section id="questions-of-interest" class="level2">
+<h2 class="anchored" data-anchor-id="questions-of-interest">Questions of Interest</h2>
+<ol type="1">
+<li>How do annual members and casual riders use Cyclistic bikes differently?</li>
+<li>Why would casual riders buy Cyclistic annual memberships?</li>
+<li>How can Cyclistic use digital media to influence casual riders to become members?</li>
+</ol>
+</section>
+</section>
+<section id="data" class="level1">
+<h1>Data</h1>
+<p>I will be analyzing bike-share trip data from <a href="https://divvybikes.com/about">Divvy</a>, a real-life bike-share program in Chicago with <a href="https://divvybikes.com/system-data">publicly available</a>, anonymized datasets.</p>
+<p>For the year 2024, the following data is given for each trip:</p>
+<ul>
+<li>Rider type (Casual or Member)</li>
+<li>Trip start date + time and end date + time</li>
+<li>Trip start location and end location</li>
+<li>Ride type (Electric bike, Classic bike, or Electric scooter)</li>
+</ul>
+<p>Divvy notes that trips that were below 60 seconds in length are excluded, since these are potentially false starts or users trying to re-dock a bike to ensure it was secure.</p>
+</section>
+<section id="data-cleaning" class="level1">
+<h1>Data Cleaning</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(arrow)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(janitor)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(leaflet)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">dplyr.summarise.inform =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>data01 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202401-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>data02 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202402-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>data03 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202403-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>data04 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202404-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>data05 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202405-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>data06 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202406-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>data07 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202407-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>data08 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202408-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>data09 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202409-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>data10 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202410-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>data11 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202411-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>data12 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">&quot;202412-divvy-tripdata.csv&quot;</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Combine tables and save</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">rbind</span>(data01, data02, data03, data04, data05, data06, </span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>              data07, data08, data09, data10, data11, data12)</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="fu">write_parquet</span>(data, <span class="st">&quot;combined2024-divvy-tripdata.parquet&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(data)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 6%">
+<col style="width: 9%">
+<col style="width: 9%">
+<col style="width: 12%">
+<col style="width: 8%">
+<col style="width: 12%">
+<col style="width: 7%">
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 6%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">ride_id</th>
+<th style="text-align: left;">rideable_type</th>
+<th style="text-align: left;">started_at</th>
+<th style="text-align: left;">ended_at</th>
+<th style="text-align: left;">start_station_name</th>
+<th style="text-align: left;">start_station_id</th>
+<th style="text-align: left;">end_station_name</th>
+<th style="text-align: left;">end_station_id</th>
+<th style="text-align: right;">start_lat</th>
+<th style="text-align: right;">start_lng</th>
+<th style="text-align: right;">end_lat</th>
+<th style="text-align: right;">end_lng</th>
+<th style="text-align: left;">member_casual</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">C1D650626C8C899A</td>
+<td style="text-align: left;">electric_bike</td>
+<td style="text-align: left;">2024-01-12 15:30:27</td>
+<td style="text-align: left;">2024-01-12 15:37:59</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90327</td>
+<td style="text-align: right;">-87.63474</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">member</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EECD38BDB25BFCB0</td>
+<td style="text-align: left;">electric_bike</td>
+<td style="text-align: left;">2024-01-08 15:45:46</td>
+<td style="text-align: left;">2024-01-08 15:52:59</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90294</td>
+<td style="text-align: right;">-87.63444</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">member</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">F4A9CE78061F17F7</td>
+<td style="text-align: left;">electric_bike</td>
+<td style="text-align: left;">2024-01-27 12:27:19</td>
+<td style="text-align: left;">2024-01-27 12:35:19</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90295</td>
+<td style="text-align: right;">-87.63447</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">member</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0A0D9E15EE50B171</td>
+<td style="text-align: left;">classic_bike</td>
+<td style="text-align: left;">2024-01-29 16:26:17</td>
+<td style="text-align: left;">2024-01-29 16:56:06</td>
+<td style="text-align: left;">Wells St &amp; Randolph St</td>
+<td style="text-align: left;">TA1305000030</td>
+<td style="text-align: left;">Larrabee St &amp; Webster Ave</td>
+<td style="text-align: left;">13193</td>
+<td style="text-align: right;">41.88430</td>
+<td style="text-align: right;">-87.63396</td>
+<td style="text-align: right;">41.92182</td>
+<td style="text-align: right;">-87.64414</td>
+<td style="text-align: left;">member</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">33FFC9805E3EFF9A</td>
+<td style="text-align: left;">classic_bike</td>
+<td style="text-align: left;">2024-01-31 05:43:23</td>
+<td style="text-align: left;">2024-01-31 06:09:35</td>
+<td style="text-align: left;">Lincoln Ave &amp; Waveland Ave</td>
+<td style="text-align: left;">13253</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.94880</td>
+<td style="text-align: right;">-87.67528</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">member</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">C96080812CD285C5</td>
+<td style="text-align: left;">classic_bike</td>
+<td style="text-align: left;">2024-01-07 11:21:24</td>
+<td style="text-align: left;">2024-01-07 11:30:03</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90322</td>
+<td style="text-align: right;">-87.63432</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">member</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<p>The data needs some cleaning before analysis.</p>
+<ul>
+<li>Categorical variables will be converted to factors for easier analysis.</li>
+<li>Some strings will be cleaned to look nicer.</li>
+<li>Additional information about date, time, and trip duration will be extracted from the start datetime.</li>
+<li>Invalid values where the end datetime is before the start datetime will be removed.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="ot">&lt;-</span> data <span class="sc">|&gt;</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Convert categorical vars to factors</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">start_station_name =</span> <span class="fu">as_factor</span>(start_station_name),</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">start_station_id =</span> <span class="fu">as_factor</span>(start_station_id),</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">end_station_name =</span> <span class="fu">as_factor</span>(end_station_name),</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">end_station_id =</span> <span class="fu">as_factor</span>(end_station_id),</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">member_casual =</span> <span class="fu">as_factor</span>(<span class="fu">str_to_title</span>(member_casual)),</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">rideable_type =</span> rideable_type <span class="sc">|&gt;</span> </span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      <span class="fu">str_replace</span>(<span class="st">&quot;_&quot;</span>, <span class="st">&quot; &quot;</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">str_to_title</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as_factor</span>(),</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Set time zone</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">started_at =</span> <span class="fu">force_tz</span>(started_at, <span class="st">&quot;America/Chicago&quot;</span>),</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">ended_at =</span> <span class="fu">force_tz</span>(ended_at, <span class="st">&quot;America/Chicago&quot;</span>),</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Make new columns</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">day_of_week =</span> started_at <span class="sc">|&gt;</span> </span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>      <span class="fu">weekdays</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as_factor</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>      <span class="fu">fct_recode</span>(<span class="at">Sun =</span> <span class="st">&quot;Sunday&quot;</span>,</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>                 <span class="at">Mon =</span> <span class="st">&quot;Monday&quot;</span>,</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>                 <span class="at">Tue =</span> <span class="st">&quot;Tuesday&quot;</span>,</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>                 <span class="at">Wed =</span> <span class="st">&quot;Wednesday&quot;</span>,</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>                 <span class="at">Thu =</span> <span class="st">&quot;Thursday&quot;</span>,</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>                 <span class="at">Fri =</span> <span class="st">&quot;Friday&quot;</span>,</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>                 <span class="at">Sat =</span> <span class="st">&quot;Saturday&quot;</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>      <span class="fu">fct_relevel</span>(<span class="st">&quot;Sun&quot;</span>, <span class="st">&quot;Mon&quot;</span>, <span class="st">&quot;Tue&quot;</span>, <span class="st">&quot;Wed&quot;</span>, <span class="st">&quot;Thu&quot;</span>, <span class="st">&quot;Fri&quot;</span>),</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">start_hour =</span> <span class="fu">as_factor</span>(<span class="fu">hour</span>(started_at)),</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">month =</span> <span class="fu">as_factor</span>(<span class="fu">month</span>(started_at)),</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>    <span class="at">ride_length =</span> <span class="fu">difftime</span>(ended_at, started_at),</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Remove bad values</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(ride_length <span class="sc">&gt;</span> <span class="dv">0</span>)</span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a><span class="fu">write_parquet</span>(data2, <span class="st">&quot;combined2024-divvy-tripdata_clean.parquet&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="data-exploration" class="level1">
+<h1>Data Exploration</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(data2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 5%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 10%">
+<col style="width: 6%">
+<col style="width: 10%">
+<col style="width: 5%">
+<col style="width: 3%">
+<col style="width: 3%">
+<col style="width: 3%">
+<col style="width: 3%">
+<col style="width: 5%">
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 2%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">ride_id</th>
+<th style="text-align: left;">rideable_type</th>
+<th style="text-align: left;">started_at</th>
+<th style="text-align: left;">ended_at</th>
+<th style="text-align: left;">start_station_name</th>
+<th style="text-align: left;">start_station_id</th>
+<th style="text-align: left;">end_station_name</th>
+<th style="text-align: left;">end_station_id</th>
+<th style="text-align: right;">start_lat</th>
+<th style="text-align: right;">start_lng</th>
+<th style="text-align: right;">end_lat</th>
+<th style="text-align: right;">end_lng</th>
+<th style="text-align: left;">member_casual</th>
+<th style="text-align: left;">day_of_week</th>
+<th style="text-align: left;">start_hour</th>
+<th style="text-align: left;">month</th>
+<th style="text-align: left;">ride_length</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">C1D650626C8C899A</td>
+<td style="text-align: left;">Electric Bike</td>
+<td style="text-align: left;">2024-01-12 15:30:27</td>
+<td style="text-align: left;">2024-01-12 15:37:59</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90327</td>
+<td style="text-align: right;">-87.63474</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">Fri</td>
+<td style="text-align: left;">15</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">452 secs</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EECD38BDB25BFCB0</td>
+<td style="text-align: left;">Electric Bike</td>
+<td style="text-align: left;">2024-01-08 15:45:46</td>
+<td style="text-align: left;">2024-01-08 15:52:59</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90294</td>
+<td style="text-align: right;">-87.63444</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">Mon</td>
+<td style="text-align: left;">15</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">433 secs</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">F4A9CE78061F17F7</td>
+<td style="text-align: left;">Electric Bike</td>
+<td style="text-align: left;">2024-01-27 12:27:19</td>
+<td style="text-align: left;">2024-01-27 12:35:19</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90295</td>
+<td style="text-align: right;">-87.63447</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">Sat</td>
+<td style="text-align: left;">12</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">480 secs</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">0A0D9E15EE50B171</td>
+<td style="text-align: left;">Classic Bike</td>
+<td style="text-align: left;">2024-01-29 16:26:17</td>
+<td style="text-align: left;">2024-01-29 16:56:06</td>
+<td style="text-align: left;">Wells St &amp; Randolph St</td>
+<td style="text-align: left;">TA1305000030</td>
+<td style="text-align: left;">Larrabee St &amp; Webster Ave</td>
+<td style="text-align: left;">13193</td>
+<td style="text-align: right;">41.88430</td>
+<td style="text-align: right;">-87.63396</td>
+<td style="text-align: right;">41.92182</td>
+<td style="text-align: right;">-87.64414</td>
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">Mon</td>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1789 secs</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">33FFC9805E3EFF9A</td>
+<td style="text-align: left;">Classic Bike</td>
+<td style="text-align: left;">2024-01-31 05:43:23</td>
+<td style="text-align: left;">2024-01-31 06:09:35</td>
+<td style="text-align: left;">Lincoln Ave &amp; Waveland Ave</td>
+<td style="text-align: left;">13253</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.94880</td>
+<td style="text-align: right;">-87.67528</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">Wed</td>
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">1572 secs</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">C96080812CD285C5</td>
+<td style="text-align: left;">Classic Bike</td>
+<td style="text-align: left;">2024-01-07 11:21:24</td>
+<td style="text-align: left;">2024-01-07 11:30:03</td>
+<td style="text-align: left;">Wells St &amp; Elm St</td>
+<td style="text-align: left;">KA1504000135</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: right;">41.90322</td>
+<td style="text-align: right;">-87.63432</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">Sun</td>
+<td style="text-align: left;">11</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">519 secs</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(data2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 5859845</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">n_distinct</span>(data2<span class="sc">$</span>start_station_id)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1764</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">n_distinct</span>(data2<span class="sc">$</span>end_station_id)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1769</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">levels</span>(data2<span class="sc">$</span>rideable_type)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] &quot;Electric Bike&quot;    &quot;Classic Bike&quot;     &quot;Electric Scooter&quot;</code></pre>
+</div>
+</div>
+<p>A quick glance gives us the following information:</p>
+<ul>
+<li>We have data on about 5.9 million trips in 2024.</li>
+<li>There are 1769 stations that riders were able to access.</li>
+<li>There are 3 types of rides that customers can access.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">as.numeric</span>(ride_length)<span class="sc">/</span><span class="dv">60</span>)) <span class="sc">+</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">50</span>) <span class="sc">+</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Ride Length (min)&quot;</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Distribution of Ride Duration&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img role="img" src="data:image/png;base64,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" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The histogram shows that the majority of rides are fairly short. There are a few trips that are unusually long, but some of these trips could be due to riders not docking their bikes properly.</p>
+</section>
 <section id="analyze-data" class="level1">
 <h1>Analyze Data</h1>
+<p>Two interesting summary statistics that we can use to compare casual riders and members are the number of rides and the median ride length (to reduce the impact of the unusually extreme values).</p>
+<p>We can see that the majority of rides are taken by members rather than casual riders.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual) <span class="sc">|&gt;</span> </span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">Rides =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span> </span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Proportion =</span> Rides<span class="sc">/</span><span class="fu">nrow</span>(data2))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div class="kable-table">
 <table class="caption-top table table-sm table-striped small">
@@ -7200,6 +7693,24 @@ function asArray(value) {
 </div>
 </div>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual) <span class="sc">|&gt;</span> </span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span> </span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">prop =</span> n <span class="sc">/</span> <span class="fu">nrow</span>(data2)) <span class="sc">|&gt;</span> </span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="st">&quot;&quot;</span>, <span class="at">y =</span> n, <span class="at">fill =</span> member_casual)) <span class="sc">+</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_polar</span>(<span class="st">&quot;y&quot;</span>, <span class="at">start=</span><span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">paste0</span>(<span class="fu">round</span>(prop, <span class="dv">2</span>) <span class="sc">*</span> <span class="dv">100</span>, <span class="st">&quot;%&quot;</span>)), </span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">position =</span> <span class="fu">position_stack</span>(<span class="at">vjust=</span><span class="fl">0.5</span>),</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="dv">6</span></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">fill =</span> <span class="cn">NULL</span>,</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Proportion of Rides by Customer Type&quot;</span>,</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">&quot;Total # of Rides = 5,859,845&quot;</span>) <span class="sc">+</span></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>),</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">plot.subtitle =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">12</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7209,6 +7720,17 @@ function asArray(value) {
 </div>
 </div>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual) <span class="sc">|&gt;</span> </span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">median_duration =</span> <span class="fu">median</span>(ride_length)) <span class="sc">|&gt;</span> </span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> member_casual, <span class="at">y =</span> <span class="fu">as.numeric</span>(median_duration)<span class="sc">/</span><span class="dv">60</span>, <span class="at">fill =</span> member_casual)) <span class="sc">+</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Customer Type&quot;</span>,</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Duration (min)&quot;</span>,</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Median Ride Length&quot;</span>) <span class="sc">+</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>),</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>        <span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7217,9 +7739,24 @@ function asArray(value) {
 </div>
 </div>
 </div>
+<p>Here we can see that members tend to take shorter trips than casual riders.</p>
 <section id="trips-by-hour" class="level2">
 <h2 class="anchored" data-anchor-id="trips-by-hour">Trips by Hour</h2>
+<p>When comparing the number of trips per hour, we see that ridership peaks during the afternoon, though members have a small peak in the morning.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, start_hour) <span class="sc">|&gt;</span> </span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span> </span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> start_hour, <span class="at">y =</span> n<span class="sc">/</span><span class="dv">1000</span>)) <span class="sc">+</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(member_casual<span class="sc">~</span>.) <span class="sc">+</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Number of Trips by Hour&quot;</span>,</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Hour&quot;</span>,</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;# of Trips (thousands)&quot;</span>) <span class="sc">+</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>        <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>),</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>        <span class="at">axis.ticks =</span> <span class="fu">element_blank</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7229,6 +7766,17 @@ function asArray(value) {
 </div>
 </div>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, start_hour) <span class="sc">|&gt;</span> </span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">median_duration =</span> <span class="fu">median</span>(ride_length)) <span class="sc">|&gt;</span> </span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> start_hour, <span class="at">y =</span> <span class="fu">as.numeric</span>(median_duration)<span class="sc">/</span><span class="dv">60</span>)) <span class="sc">+</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_grid</span>(member_casual <span class="sc">~</span> .) <span class="sc">+</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Hour&quot;</span>,</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Duration (min)&quot;</span>,</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Median Ride Length by Hour&quot;</span>) <span class="sc">+</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7237,19 +7785,45 @@ function asArray(value) {
 </div>
 </div>
 </div>
+<p>This plot shows that members have a consistent ride length throughout the day, while casual riders tend to ride for longer during the afternoon.</p>
 </section>
 <section id="trips-by-day-of-week" class="level2">
 <h2 class="anchored" data-anchor-id="trips-by-day-of-week">Trips by Day of Week</h2>
+<p>Members take more trips during weekdays compared to weekends. The opposite is true for casual riders.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, day_of_week) <span class="sc">|&gt;</span> </span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span> </span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> day_of_week, <span class="at">y =</span> n<span class="sc">/</span><span class="dv">1000</span>)) <span class="sc">+</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>member_casual) <span class="sc">+</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Number of Trips by Day of Week&quot;</span>,</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Day of Week&quot;</span>,</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;# of Trips (thousands)&quot;</span>) <span class="sc">+</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>        <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>        <span class="at">axis.ticks =</span> <span class="fu">element_blank</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img role="img" src="data:image/png;base64,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" class="img-fluid figure-img" width="576"></p>
+<p><img role="img" src="data:image/png;base64,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r/P81PItcq82bwb5tde6A/pnF3/a+lYCuhwBvdYWT6jPHqK/Ovv1p35//mSRfyL+b88/telX/rMmpotvIqCtEdCCmwW0eU/yz1vvhXdv/Oh+Eml6j/Pjn5/9ffGtBHQ5Anrt/eA35OeB/mAa1E98vnHRG9W8L/4X0/uon/yDmVjimwhoawSU1TYCyrKNgLLaRkBZthFQVtsIKMs2AspqGwFl2UZAWW0joCzbCCirbQSUZRsBZbWNgLJsI6CsthFQlm0ElNU2AsqyjYCy2kZAWbYRUFbbCCjLNgLKahsBZdlWKqCMpRuysWwjoKy2IRvLtjIB7fsX3n9/+DORgmnmjFbMXAtohtOshmnmjCphElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmElADUJi9RkC1QStmEtCy0D894FKeT0tMAqoNWjGTgJaFEtDhmQRUG7RiJgEtCyWgwzMJqDZoxUwCWhZKQIdnElBt0IqZBLQslIAOzySg2qAVMwcJ6NUfnRmPP/v15ovnpl888krHF/Jk+56EkotrcCgBHZ5JQLVBK2YOEdDLj439ftt98dHsi7t/svZF62T7noaSi2twKAEdnklAtUErZg4Q0KvPju95ZXL1x+O7vj396tz43lcml58d3/ve6hetk+17IkoursGhBHR4JgHVBq2YOUBALzT3MM+P75tMPjzjv/joMVfT1hftk+17IkoursGhBHR4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wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJu5AN2XLKRkCDTJw2wPRySbuQDdlyykZAg0ycNsD0ckm7kA3ZcspGQINMnDbA9HJJ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" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, day_of_week) <span class="sc">|&gt;</span> </span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">median_duration =</span> <span class="fu">median</span>(ride_length)) <span class="sc">|&gt;</span> </span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> day_of_week, <span class="at">y =</span> <span class="fu">as.numeric</span>(median_duration)<span class="sc">/</span><span class="dv">60</span>)) <span class="sc">+</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>member_casual) <span class="sc">+</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Day of Week&quot;</span>,</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Duration (min)&quot;</span>,</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Median Ride Length by Day of Week&quot;</span>) <span class="sc">+</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7258,10 +7832,25 @@ function asArray(value) {
 </div>
 </div>
 </div>
+<p>This shows that members have a consistent ride length throughout the week, though weekend trips are slightly longer. For casual riders, weekend trips are much longer than weekday trips.</p>
 </section>
 <section id="trips-by-month" class="level2">
 <h2 class="anchored" data-anchor-id="trips-by-month">Trips by Month</h2>
+<p>Both members and casual riders take more trips during the warmer months of the year.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, month) <span class="sc">|&gt;</span> </span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span> </span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> month, <span class="at">y =</span> n<span class="sc">/</span><span class="dv">1000</span>)) <span class="sc">+</span></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>member_casual) <span class="sc">+</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">&quot;Number of Trips by Month&quot;</span>,</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">&quot;Month&quot;</span>,</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;# of Trips (thousands)&quot;</span>) <span class="sc">+</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">&quot;none&quot;</span>,</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>        <span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>),</span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>        <span class="at">axis.ticks =</span> <span class="fu">element_blank</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7271,6 +7860,17 @@ function asArray(value) {
 </div>
 </div>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, month) <span class="sc">|&gt;</span> </span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">median_duration =</span> <span class="fu">median</span>(ride_length)) <span class="sc">|&gt;</span> </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> month, <span class="at">y =</span> <span class="fu">as.numeric</span>(median_duration)<span class="sc">/</span><span class="dv">60</span>)) <span class="sc">+</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>member_casual) <span class="sc">+</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Month&quot;</span>,</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Duration (min)&quot;</span>,</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Median Ride Length by Month&quot;</span>) <span class="sc">+</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7279,10 +7879,35 @@ function asArray(value) {
 </div>
 </div>
 </div>
+<p>However, casual riders once again show a bigger difference in trip duration between the warmer months and the colder months. For members, the difference in trip duration between the warmer months and the colder months is smaller.</p>
 </section>
 <section id="rideable-type" class="level2">
 <h2 class="anchored" data-anchor-id="rideable-type">Rideable Type</h2>
+<p>Casual riders and members use the different rideable types at similar rates, though casual riders use electric scooters at a slightly higher rate than members.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, rideable_type) <span class="sc">|&gt;</span> </span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span> </span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">prop =</span> <span class="fu">if_else</span>(member_casual <span class="sc">==</span> <span class="st">&quot;Member&quot;</span>, </span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>                   n <span class="sc">/</span> <span class="fu">sum</span>(data2<span class="sc">$</span>member_casual <span class="sc">==</span> <span class="st">&quot;Member&quot;</span>),</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>                   n <span class="sc">/</span> <span class="fu">sum</span>(data2<span class="sc">$</span>member_casual <span class="sc">==</span> <span class="st">&quot;Casual&quot;</span>)</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>                   )</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span> </span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="st">&quot;&quot;</span>, <span class="at">y =</span> n, <span class="at">fill =</span> rideable_type)) <span class="sc">+</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>member_casual, <span class="at">scales =</span> <span class="st">&quot;free&quot;</span>) <span class="sc">+</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_polar</span>(<span class="st">&quot;y&quot;</span>, <span class="at">start=</span><span class="dv">0</span>) <span class="sc">+</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(</span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">aes</span>(<span class="at">label =</span> <span class="fu">paste0</span>(<span class="fu">round</span>(prop, <span class="dv">2</span>) <span class="sc">*</span> <span class="dv">100</span>, <span class="st">&quot;%&quot;</span>)), </span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">position =</span> <span class="fu">position_stack</span>(<span class="at">vjust=</span><span class="fl">0.5</span>),</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">4.5</span></span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">fill =</span> <span class="cn">NULL</span>,</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Proportion of Rides by Rideable Type&quot;</span>,</span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">&quot;&quot;</span>) <span class="sc">+</span></span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>() <span class="sc">+</span></span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">vjust =</span> <span class="dv">1</span>, <span class="at">size =</span> <span class="dv">16</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7292,6 +7917,17 @@ function asArray(value) {
 </div>
 </div>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>data2 <span class="sc">|&gt;</span> </span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, rideable_type) <span class="sc">|&gt;</span> </span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">median_duration =</span> <span class="fu">median</span>(ride_length)) <span class="sc">|&gt;</span> </span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> rideable_type, <span class="at">y =</span> <span class="fu">as.numeric</span>(median_duration)<span class="sc">/</span><span class="dv">60</span>)) <span class="sc">+</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">&quot;identity&quot;</span>) <span class="sc">+</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>member_casual) <span class="sc">+</span></span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">&quot;Type of Ride&quot;</span>,</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">&quot;Duration (min)&quot;</span>,</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">&quot;Median Ride Length by Rideable Type&quot;</span>) <span class="sc">+</span></span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">plot.title =</span> <span class="fu">element_text</span>(<span class="at">hjust =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">16</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -7300,30 +7936,307 @@ function asArray(value) {
 </div>
 </div>
 </div>
+<p>Once again, members tend to take shorter and more consistent length rides than casual riders.</p>
 </section>
 <section id="trips-by-destination" class="level2">
 <h2 class="anchored" data-anchor-id="trips-by-destination">Trips by Destination</h2>
+<p>For the location data, I am interested in comparing the destinations of members and casual riders.</p>
+<p>Our location data is messy since many rides don’t have a recorded station name or ID. Nevertheless, we can still use coordinates, which are available for almost all trips.</p>
+<p>We can still incorporate the station information for trips in which they are available. However, the same station can have multiple different coordinates for different rides. To illustrate this:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Number of trips by rider type and end location</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>end_trips_n <span class="ot">&lt;-</span> data2 <span class="sc">|&gt;</span> </span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(member_casual, end_station_id, end_station_name, end_lat, end_lng) <span class="sc">|&gt;</span> </span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>())</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(end_trips_n)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 19%">
+<col style="width: 32%">
+<col style="width: 11%">
+<col style="width: 13%">
+<col style="width: 3%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">member_casual</th>
+<th style="text-align: left;">end_station_id</th>
+<th style="text-align: left;">end_station_name</th>
+<th style="text-align: right;">end_lat</th>
+<th style="text-align: right;">end_lng</th>
+<th style="text-align: right;">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: right;">41.87673</td>
+<td style="text-align: right;">-87.64459</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: right;">41.88899</td>
+<td style="text-align: right;">-87.63834</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: right;">41.88901</td>
+<td style="text-align: right;">-87.63617</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: right;">41.88913</td>
+<td style="text-align: right;">-87.63749</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: right;">41.88915</td>
+<td style="text-align: right;">-87.63675</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Member</td>
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: right;">41.88916</td>
+<td style="text-align: right;">-87.63882</td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<p>We can address this by making a table of end stations with a single latitude and longitude value by finding the most frequently appearing coordinate for each station.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>end_locations <span class="ot">&lt;-</span> data2 <span class="sc">|&gt;</span> </span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(end_station_id, end_station_name, end_lat, end_lng) <span class="sc">|&gt;</span> </span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n =</span> <span class="fu">n</span>()) <span class="sc">|&gt;</span> <span class="co"># Number of trips for each combination of id, name, lat, lng</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(end_station_id) <span class="sc">|&gt;</span> </span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(n) <span class="sc">|&gt;</span> <span class="co"># Most frequent lat and lng for each id</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>n)</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(end_locations)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">end_station_id</th>
+<th style="text-align: left;">end_station_name</th>
+<th style="text-align: right;">end_lat</th>
+<th style="text-align: right;">end_lng</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">KA1503000043</td>
+<td style="text-align: left;">Kingsbury St &amp; Kinzie St</td>
+<td style="text-align: right;">41.88918</td>
+<td style="text-align: right;">-87.63851</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">13193</td>
+<td style="text-align: left;">Larrabee St &amp; Webster Ave</td>
+<td style="text-align: right;">41.92182</td>
+<td style="text-align: right;">-87.64414</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">18062</td>
+<td style="text-align: left;">Aberdeen St &amp; Randolph St</td>
+<td style="text-align: right;">41.88411</td>
+<td style="text-align: right;">-87.65426</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">TA1307000134</td>
+<td style="text-align: left;">Wilton Ave &amp; Belmont Ave</td>
+<td style="text-align: right;">41.94023</td>
+<td style="text-align: right;">-87.65294</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">TA1307000138</td>
+<td style="text-align: left;">Wood St &amp; Webster Ave</td>
+<td style="text-align: right;">41.92106</td>
+<td style="text-align: right;">-87.67280</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">RP-004</td>
+<td style="text-align: left;">Oakley Ave &amp; Touhy Ave</td>
+<td style="text-align: right;">42.01234</td>
+<td style="text-align: right;">-87.68824</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<p>With this we can start working on comparing the destinations between casual riders and members.</p>
 <section id="casual-riders" class="level3">
 <h3 class="anchored" data-anchor-id="casual-riders">Casual Riders</h3>
-<p>Top 20 destinations for casual riders</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>casual_dest <span class="ot">&lt;-</span> end_trips_n <span class="sc">|&gt;</span> </span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(member_casual <span class="sc">==</span> <span class="st">&quot;Casual&quot;</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(end_lat, end_lng) <span class="sc">|&gt;</span> </span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">rides =</span> <span class="fu">sum</span>(n)) <span class="sc">|&gt;</span> </span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(rides)) <span class="sc">|&gt;</span> </span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(end_locations, <span class="fu">c</span>(<span class="st">&quot;end_lat&quot;</span>, <span class="st">&quot;end_lng&quot;</span>)) <span class="co"># Add available station names</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>casual_dest <span class="sc">|&gt;</span> </span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relocate</span>(end_station_id, end_station_name) <span class="sc">|&gt;</span> </span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<div class="leaflet html-widget html-fill-item" id="htmlwidget-360eb0b74e74a4d754e5" style="width:100%;height:464px;"></div>
-<script type="application/json" data-for="htmlwidget-360eb0b74e74a4d754e5">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"https://openstreetmap.org/copyright/\">OpenStreetMap<\/a>,  <a href=\"https://opendatacommons.org/licenses/odbl/\">ODbL<\/a>"}]},{"method":"addCircles","args":[[41.892278,41.880958,41.911722,41.90096039,41.8810317,41.86722595682,41.926277,41.886976,41.89,41.91,41.872773,41.89,41.891466,41.867888,41.8839840647265,41.912133,41.915689,41.866095,41.918306,41.963982],[-87.612043,-87.616743,-87.62680400000001,-87.62377664,-87.62408431999999,-87.61535539019999,-87.63083399999999,-87.612813,-87.63,-87.63,-87.623981,-87.62,-87.626761,-87.623041,-87.6246839761734,-87.63465600000001,-87.63460000000001,-87.60726699999999,-87.63628199999999,-87.638181],[233.9529867302403,178.6476979980431,163.0490723677997,160.5615146914104,155.71448230656,137.7316230936091,134.6811048365731,129.3135723735138,122.3642104538741,118.0762465528101,111.247471881387,107.7589903441935,106.9439105325778,106.8597211300872,106.7895125937,106.5879918189662,105.9056183589898,105.1855503384377,104.484448603608,104.0048075811883],null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},["Streeter Dr & Grand Ave","DuSable Lake Shore Dr & Monroe St","DuSable Lake Shore Dr & North Blvd","Michigan Ave & Oak St","Millennium Park","Shedd Aquarium","Theater on the Lake","Dusable Harbor",null,null,"Michigan Ave & 8th St",null,"Wabash Ave & Grand Ave","Indiana Ave & Roosevelt Rd","Michigan Ave & Washington St","Wells St & Concord Ln","Clark St & Lincoln Ave","Adler Planetarium","Clark St & Armitage Ave","Montrose Harbor"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null,null]}],"limits":{"lat":[41.866095,41.963982],"lng":[-87.638181,-87.60726699999999]}},"evals":[],"jsHooks":[]}</script>
+<div class="kable-table">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 46%">
+<col style="width: 12%">
+<col style="width: 13%">
+<col style="width: 8%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">end_station_id</th>
+<th style="text-align: left;">end_station_name</th>
+<th style="text-align: right;">end_lat</th>
+<th style="text-align: right;">end_lng</th>
+<th style="text-align: right;">rides</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">13022</td>
+<td style="text-align: left;">Streeter Dr &amp; Grand Ave</td>
+<td style="text-align: right;">41.89228</td>
+<td style="text-align: right;">-87.61204</td>
+<td style="text-align: right;">54734</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">13300</td>
+<td style="text-align: left;">DuSable Lake Shore Dr &amp; Monroe St</td>
+<td style="text-align: right;">41.88096</td>
+<td style="text-align: right;">-87.61674</td>
+<td style="text-align: right;">31915</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">LF-005</td>
+<td style="text-align: left;">DuSable Lake Shore Dr &amp; North Blvd</td>
+<td style="text-align: right;">41.91172</td>
+<td style="text-align: right;">-87.62680</td>
+<td style="text-align: right;">26585</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">13042</td>
+<td style="text-align: left;">Michigan Ave &amp; Oak St</td>
+<td style="text-align: right;">41.90096</td>
+<td style="text-align: right;">-87.62378</td>
+<td style="text-align: right;">25780</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">13008</td>
+<td style="text-align: left;">Millennium Park</td>
+<td style="text-align: right;">41.88103</td>
+<td style="text-align: right;">-87.62408</td>
+<td style="text-align: right;">24247</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">15544</td>
+<td style="text-align: left;">Shedd Aquarium</td>
+<td style="text-align: right;">41.86723</td>
+<td style="text-align: right;">-87.61536</td>
+<td style="text-align: right;">18970</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>casual_dest <span class="sc">|&gt;</span> </span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">20</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">leaflet</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">addTiles</span>() <span class="sc">|&gt;</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">addCircles</span>(</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">lng =</span> <span class="sc">~</span>end_lng,</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">lat =</span> <span class="sc">~</span>end_lat,</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">weight =</span> <span class="dv">5</span>,</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">radius =</span> <span class="sc">~</span><span class="fu">sqrt</span>(rides),</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>      <span class="at">popup =</span> <span class="sc">~</span>end_station_name</span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="leaflet html-widget html-fill-item" id="htmlwidget-fe67322763abb55f4e49" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-fe67322763abb55f4e49">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"https://openstreetmap.org/copyright/\">OpenStreetMap<\/a>,  <a href=\"https://opendatacommons.org/licenses/odbl/\">ODbL<\/a>"}]},{"method":"addCircles","args":[[41.892278,41.880958,41.911722,41.90096039,41.8810317,41.86722595682,41.926277,41.886976,41.89,41.91,41.872773,41.89,41.891466,41.867888,41.8839840647265,41.912133,41.915689,41.866095,41.918306,41.963982],[-87.612043,-87.616743,-87.62680400000001,-87.62377664,-87.62408431999999,-87.61535539019999,-87.63083399999999,-87.612813,-87.63,-87.63,-87.623981,-87.62,-87.626761,-87.623041,-87.6246839761734,-87.63465600000001,-87.63460000000001,-87.60726699999999,-87.63628199999999,-87.638181],[233.9529867302403,178.6476979980431,163.0490723677997,160.5615146914104,155.71448230656,137.7316230936091,134.6811048365731,129.3135723735138,122.3642104538741,118.0762465528101,111.247471881387,107.7589903441935,106.9439105325778,106.8597211300872,106.7895125937,106.5879918189662,105.9056183589898,105.1855503384377,104.484448603608,104.0048075811883],null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},["Streeter Dr & Grand Ave","DuSable Lake Shore Dr & Monroe St","DuSable Lake Shore Dr & North Blvd","Michigan Ave & Oak St","Millennium Park","Shedd Aquarium","Theater on the Lake","Dusable Harbor",null,null,"Michigan Ave & 8th St",null,"Wabash Ave & Grand Ave","Indiana Ave & Roosevelt Rd","Michigan Ave & Washington St","Wells St & Concord Ln","Clark St & Lincoln Ave","Adler Planetarium","Clark St & Armitage Ave","Montrose Harbor"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null,null]}],"limits":{"lat":[41.866095,41.963982],"lng":[-87.638181,-87.60726699999999]}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+<p>The top 20 destinations for casual riders are shown above. They all appear to be recreational areas by the waterfront.</p>
 </section>
 <section id="members" class="level3">
 <h3 class="anchored" data-anchor-id="members">Members</h3>
-<p>Top 20 destinations for members</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>member_dest <span class="ot">&lt;-</span> end_trips_n <span class="sc">|&gt;</span> </span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(member_casual <span class="sc">==</span> <span class="st">&quot;Member&quot;</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(end_lat, end_lng) <span class="sc">|&gt;</span> </span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">rides =</span> <span class="fu">sum</span>(n)) <span class="sc">|&gt;</span> </span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(rides)) <span class="sc">|&gt;</span> </span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(end_locations, <span class="fu">c</span>(<span class="st">&quot;end_lat&quot;</span>, <span class="st">&quot;end_lng&quot;</span>))</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>member_dest <span class="sc">|&gt;</span> </span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">head</span>(<span class="dv">20</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">leaflet</span>() <span class="sc">|&gt;</span> </span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">addTiles</span>() <span class="sc">|&gt;</span></span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">addCircles</span>(</span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">lng =</span> <span class="sc">~</span>end_lng,</span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">lat =</span> <span class="sc">~</span>end_lat,</span>
+<span id="cb30-16"><a href="#cb30-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">weight =</span> <span class="dv">5</span>,</span>
+<span id="cb30-17"><a href="#cb30-17" aria-hidden="true" tabindex="-1"></a>      <span class="at">radius =</span> <span class="sc">~</span><span class="fu">sqrt</span>(rides),</span>
+<span id="cb30-18"><a href="#cb30-18" aria-hidden="true" tabindex="-1"></a>      <span class="at">popup =</span> <span class="sc">~</span>end_station_name</span>
+<span id="cb30-19"><a href="#cb30-19" aria-hidden="true" tabindex="-1"></a>    )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<div class="leaflet html-widget html-fill-item" id="htmlwidget-d6124a81b38103b04df3" style="width:100%;height:464px;"></div>
-<script type="application/json" data-for="htmlwidget-d6124a81b38103b04df3">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"https://openstreetmap.org/copyright/\">OpenStreetMap<\/a>,  <a href=\"https://opendatacommons.org/licenses/odbl/\">ODbL<\/a>"}]},{"method":"addCircles","args":[[41.88917683258,41.88338,41.88275196568561,41.902973,41.89,41.912133,41.87831661183069,41.903222,41.89661720040753,41.791478,41.882409,41.893992,41.88,41.897764,41.879255,41.9,41.93758231600629,41.884241,41.94023191810859,41.78509714636],[-87.6385057718,-87.64117,-87.64119029045105,-87.63128,-87.63,-87.63465600000001,-87.64098107814789,-87.63432400000001,-87.62857854366302,-87.599861,-87.63976700000001,-87.629318,-87.63,-87.642884,-87.639904,-87.63,-87.64409780502319,-87.629634,-87.65294373035431,-87.6010727606],[172.3020603475188,168.644596711546,161.235852092517,157.2545706807913,147.7768588108436,144.2705791213164,142.9615332878044,142.492105044455,140.53113534018,139.0898989862312,138.8884444437333,135.0222203935338,132.1552117776669,131.9734821848693,131.9507483874192,131.2859474582105,130.3878828726044,130.2036865837523,129.1859125446734,128.8332255281998],null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},["Kingsbury St & Kinzie St","Clinton St & Washington Blvd","Clinton St & Madison St","Clark St & Elm St",null,"Wells St & Concord Ln","Clinton St & Jackson Blvd","Wells St & Elm St","State St & Chicago Ave","University Ave & 57th St","Canal St & Madison St","Dearborn St & Erie St",null,"Larrabee St & Kingsbury St","Canal St & Adams St",null,"Broadway & Barry Ave","Daley Center Plaza","Wilton Ave & Belmont Ave","Ellis Ave & 60th St"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null,null]}],"limits":{"lat":[41.78509714636,41.94023191810859],"lng":[-87.65294373035431,-87.599861]}},"evals":[],"jsHooks":[]}</script>
+<div class="leaflet html-widget html-fill-item" id="htmlwidget-fd727b046d0a25bb1e8d" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-fd727b046d0a25bb1e8d">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"https://openstreetmap.org/copyright/\">OpenStreetMap<\/a>,  <a href=\"https://opendatacommons.org/licenses/odbl/\">ODbL<\/a>"}]},{"method":"addCircles","args":[[41.88917683258,41.88338,41.88275196568561,41.902973,41.89,41.912133,41.87831661183069,41.903222,41.89661720040753,41.791478,41.882409,41.893992,41.88,41.897764,41.879255,41.9,41.93758231600629,41.884241,41.94023191810859,41.78509714636],[-87.6385057718,-87.64117,-87.64119029045105,-87.63128,-87.63,-87.63465600000001,-87.64098107814789,-87.63432400000001,-87.62857854366302,-87.599861,-87.63976700000001,-87.629318,-87.63,-87.642884,-87.639904,-87.63,-87.64409780502319,-87.629634,-87.65294373035431,-87.6010727606],[172.3020603475188,168.644596711546,161.235852092517,157.2545706807913,147.7768588108436,144.2705791213164,142.9615332878044,142.492105044455,140.53113534018,139.0898989862312,138.8884444437333,135.0222203935338,132.1552117776669,131.9734821848693,131.9507483874192,131.2859474582105,130.3878828726044,130.2036865837523,129.1859125446734,128.8332255281998],null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},["Kingsbury St & Kinzie St","Clinton St & Washington Blvd","Clinton St & Madison St","Clark St & Elm St",null,"Wells St & Concord Ln","Clinton St & Jackson Blvd","Wells St & Elm St","State St & Chicago Ave","University Ave & 57th St","Canal St & Madison St","Dearborn St & Erie St",null,"Larrabee St & Kingsbury St","Canal St & Adams St",null,"Broadway & Barry Ave","Daley Center Plaza","Wilton Ave & Belmont Ave","Ellis Ave & 60th St"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null,null]}],"limits":{"lat":[41.78509714636,41.94023191810859],"lng":[-87.65294373035431,-87.599861]}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
+<p>The top 20 destinations for members riders are shown above. They include the downtown area, transit centers, and The University of Chicago.</p>
 </section>
 </section>
+</section>
+<section id="summary" class="level1">
+<h1>Summary</h1>
+<p>There are clear differences between the trips of casual riders and members.</p>
+<ul>
+<li>Casual rider trips occur more frequently during weekends and warmer months. Their trips also tend to be longer during weekends and warmer months. The most common destinations are recreational areas on the waterfront.</li>
+<li>Member trips make up the majority of bike trips. These trips are shorter than casual rider trips overall. Member trips occur more frequently during weekdays, and have a spike in the morning hours. Their trips are consistent in duration throughout the day and week, with only a small increase during the warmer months. The most popular destinations are in the downtown area, near transit centers, and The University of Chicago.</li>
+</ul>
+<p>All together, this suggests that casual riders tend to take trips mainly for leisure while members tend to take trips for daily commuting.</p>
+</section>
+<section id="recommendations" class="level1">
+<h1>Recommendations</h1>
+<p>Given that casual riders are already aware of the Cyclistic program, converting them to members is a matter of convincing them of the benefits of the membership. Some ideas are:</p>
+<ul>
+<li>Convince casual riders to daily bike commuters by emphasizing the benefits of commuting by bike (widespread availability, cost, speed, healthy physical activity, etc.) instead of by other forms of transportation.</li>
+<li>Create promotional deals for members for leisure activities and destinations (the aquarium, museums, restaurants, etc.).</li>
+</ul>
 </section>
 
 </main>

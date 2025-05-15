@@ -8,8 +8,38 @@ format:
     df-print: kable
 ---
 
+# Background
+
+Cyclistic is a fictional bike-share company in Chicago. Cyclistic has flexible pricing plans; customers who buy single-ride or full day passes are known as casual riders, and those who buy annual memberships are known as members.
+
+Annual members are much more profitable than casual riders, so the director of marketing believes the company’s future success depends on maximizing the number of annual memberships. 
+
+In order to design a new marketing strategy to convert casual riders into annual
+members, we need to better understand how annual members and casual riders differ, why casual riders would buy a membership, and how digital media could affect their marketing tactics.
+
+## Questions of Interest
+
+1. How do annual members and casual riders use Cyclistic bikes differently?
+2. Why would casual riders buy Cyclistic annual memberships?
+3. How can Cyclistic use digital media to influence casual riders to become members?
+
+# Data
+
+I will be analyzing bike-share trip data from [Divvy](https://divvybikes.com/about), a real-life bike-share program in Chicago with [publicly available](https://divvybikes.com/system-data), anonymized datasets.
+
+For the year 2024, the following data is given for each trip:
+
+- Rider type (Casual or Member)
+- Trip start date + time and end date + time
+- Trip start location and end location
+- Ride type (Electric bike, Classic bike, or Electric scooter)
+
+Divvy notes that trips that were below 60 seconds in length are excluded, since these are potentially false starts or users trying to re-dock a bike to ensure it was secure.
+
+# Data Cleaning
+
 ```{r setup}
-#| include: false
+#| output: false
 
 library(tidyverse)
 library(arrow)
@@ -19,7 +49,6 @@ options(dplyr.summarise.inform = FALSE)
 ```
 
 ```{r combine files}
-#| include: false
 #| eval: false
 
 data01 <- read_csv("202401-divvy-tripdata.csv")
@@ -44,16 +73,22 @@ write_parquet(data, "combined2024-divvy-tripdata.parquet")
 
 ```{r raw combined data}
 #| include: false
-#| eval: false
 
 data <- read_parquet("combined2024-divvy-tripdata.parquet")
-
-# Preview data
-glimpse(data)
 ```
 
+```{r}
+head(data)
+```
+
+The data needs some cleaning before analysis. 
+
+- Categorical variables will be converted to factors for easier analysis. 
+- Some strings will be cleaned to look nicer.
+- Additional information about date, time, and trip duration will be extracted from the start datetime.
+- Invalid values where the end datetime is before the start datetime will be removed.
+
 ```{r cleaning}
-#| include: false
 #| eval: false
 
 data2 <- data |> 
@@ -85,6 +120,7 @@ data2 <- data |>
                  Fri = "Friday",
                  Sat = "Saturday") |> 
       fct_relevel("Sun", "Mon", "Tue", "Wed", "Thu", "Fri"),
+    
     start_hour = as_factor(hour(started_at)),
     month = as_factor(month(started_at)),
     ride_length = difftime(ended_at, started_at),
@@ -96,27 +132,55 @@ data2 <- data |>
 write_parquet(data2, "combined2024-divvy-tripdata_clean.parquet")
 ```
 
-# Analyze Data
+# Data Exploration
 
 ```{r}
 #| include: false
 
 data2 <- read_parquet("combined2024-divvy-tripdata_clean.parquet")
-glimpse(data2)
 ```
 
 ```{r}
-#| echo: false
+head(data2)
+```
 
+```{r}
+nrow(data2)
+n_distinct(data2$start_station_id)
+n_distinct(data2$end_station_id)
+levels(data2$rideable_type)
+```
+
+A quick glance gives us the following information:
+
+- We have data on about 5.9 million trips in 2024. 
+- There are 1769 stations that riders were able to access. 
+- There are 3 types of rides that customers can access.
+
+```{r}
+data2 |> 
+  ggplot(aes(x = as.numeric(ride_length)/60)) +
+  geom_histogram(bins = 50) +
+  labs(x = "Ride Length (min)",
+       title = "Distribution of Ride Duration")
+```
+
+The histogram shows that the majority of rides are fairly short. There are a few trips that are unusually long, but some of these trips could be due to riders not docking their bikes properly.
+
+# Analyze Data
+
+Two interesting summary statistics that we can use to compare casual riders and members are the number of rides and the median ride length (to reduce the impact of the unusually extreme values). 
+
+We can see that the majority of rides are taken by members rather than casual riders.
+
+```{r rider type proportion}
 data2 |> 
   group_by(member_casual) |> 
   summarise(Rides = n()) |> 
   mutate(Proportion = Rides/nrow(data2))
 ```
 
-```{r}
-#| echo: false
-
+```{r rider type pie chart}
 data2 |> 
   group_by(member_casual) |> 
   summarise(n = n()) |> 
@@ -137,9 +201,7 @@ data2 |>
         plot.subtitle = element_text(hjust = 0.5, size = 12))
 ```
 
-```{r}
-#| echo: false
-
+```{r rider type duration}
 data2 |> 
   group_by(member_casual) |> 
   summarise(median_duration = median(ride_length)) |> 
@@ -153,11 +215,13 @@ data2 |>
         legend.position = "none")
 ```
 
+Here we can see that members tend to take shorter trips than casual riders.
+
 ## Trips by Hour
 
-```{r}
-#| echo: false
+When comparing the number of trips per hour, we see that ridership peaks during the afternoon, though members have a small peak in the morning.
 
+```{r}
 data2 |> 
   group_by(member_casual, start_hour) |> 
   summarise(n = n()) |> 
@@ -174,8 +238,6 @@ data2 |>
 ```
 
 ```{r}
-#| echo: false
-
 data2 |> 
   group_by(member_casual, start_hour) |> 
   summarise(median_duration = median(ride_length)) |> 
@@ -189,33 +251,29 @@ data2 |>
   theme(plot.title = element_text(hjust = 0.5, size = 16))
 ```
 
+This plot shows that members have a consistent ride length throughout the day, while casual riders tend to ride for longer during the afternoon.
 
 ## Trips by Day of Week
 
-```{r}
-#| echo: false
-#| fig-width: 6
-#| fig-height: 6
+Members take more trips during weekdays compared to weekends. The opposite is true for casual riders.
 
+```{r}
 data2 |> 
   group_by(member_casual, day_of_week) |> 
   summarise(n = n()) |> 
   ggplot(aes(x = day_of_week, y = n/1000)) +
   geom_col() +
-  facet_grid(member_casual ~ .) + #facet_wrap(~member_casual) +
+  facet_wrap(~member_casual) +
   theme_bw() +
   labs(title = "Number of Trips by Day of Week",
        x = "Day of Week",
        y = "# of Trips (thousands)") +
   theme(legend.position = "none",
-        plot.title = element_text(hjust = 0.5, size = 16),
+        plot.title = element_text(hjust = 0.5),
         axis.ticks = element_blank())
 ```
 
-
 ```{r}
-#| echo: false
-
 data2 |> 
   group_by(member_casual, day_of_week) |> 
   summarise(median_duration = median(ride_length)) |> 
@@ -229,11 +287,13 @@ data2 |>
   theme(plot.title = element_text(hjust = 0.5, size = 16))
 ```
 
+This shows that members have a consistent ride length throughout the week, though weekend trips are slightly longer. For casual riders, weekend trips are much longer than weekday trips.
+
 ## Trips by Month
 
-```{r}
-#| echo: false
+Both members and casual riders take more trips during the warmer months of the year.
 
+```{r}
 data2 |> 
   group_by(member_casual, month) |> 
   summarise(n = n()) |> 
@@ -250,8 +310,6 @@ data2 |>
 ```
 
 ```{r}
-#| echo: false
-
 data2 |> 
   group_by(member_casual, month) |> 
   summarise(median_duration = median(ride_length)) |> 
@@ -265,11 +323,13 @@ data2 |>
   theme(plot.title = element_text(hjust = 0.5, size = 16))
 ```
 
+However, casual riders once again show a bigger difference in trip duration between the warmer months and the colder months. For members, the difference in trip duration between the warmer months and the colder months is smaller.
+
 ## Rideable Type
 
-```{r}
-#| echo: false
+Casual riders and members use the different rideable types at similar rates, though casual riders use electric scooters at a slightly higher rate than members.
 
+```{r}
 data2 |> 
   group_by(member_casual, rideable_type) |> 
   summarise(n = n()) |> 
@@ -292,13 +352,10 @@ data2 |>
        title = "Proportion of Rides by Rideable Type",
        subtitle = "") +
   theme_void() +
-  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 16))#,
-        #plot.subtitle = element_text(hjust = 0.5, size = 12))
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 16))
 ```
 
 ```{r}
-#| echo: false
-
 data2 |> 
   group_by(member_casual, rideable_type) |> 
   summarise(median_duration = median(ride_length)) |> 
@@ -312,50 +369,60 @@ data2 |>
   theme(plot.title = element_text(hjust = 0.5, size = 16))
 ```
 
+Once again, members tend to take shorter and more consistent length rides than casual riders.
+
 ## Trips by Destination
 
-```{r}
-#| include: false
+For the location data, I am interested in comparing the destinations of members and casual riders.
 
-# Number of trips by end location
-end <- data2 |> 
+Our location data is messy since many rides don't have a recorded station name or ID. Nevertheless, we can still use coordinates, which are available for almost all trips.
+
+We can still incorporate the station information for trips in which they are available. However, the same station can have multiple different coordinates for different rides. To illustrate this:
+
+```{r}
+# Number of trips by rider type and end location
+end_trips_n <- data2 |> 
   group_by(member_casual, end_station_id, end_station_name, end_lat, end_lng) |> 
   summarise(n = n())
+
+head(end_trips_n)
 ```
 
+We can address this by making a table of end stations with a single latitude and longitude value by finding the most frequently appearing coordinate for each station.
 
 ```{r}
-#| include: false
-
-# The same station can have multiple different coordinates
-# This table gives one coordinate for each station using the most frequently appearing coordinate
 end_locations <- data2 |> 
   group_by(end_station_id, end_station_name, end_lat, end_lng) |> 
-  summarise(n = n()) |> 
+  summarise(n = n()) |> # Number of trips for each combination of id, name, lat, lng
   ungroup() |> 
   group_by(end_station_id) |> 
-  slice_max(n) |> 
+  slice_max(n) |> # Most frequent lat and lng for each id
   ungroup() |> 
-  drop_na() |> 
   select(-n)
+
+head(end_locations)
 ```
+
+With this we can start working on comparing the destinations between casual riders and members.
 
 ### Casual Riders
 
-Top 20 destinations for casual riders
-
 ```{r}
-#| echo: false
-
-casual_dest <- end |> 
+casual_dest <- end_trips_n |> 
   filter(member_casual == "Casual") |> 
   group_by(end_lat, end_lng) |> 
   summarise(rides = sum(n)) |> 
-  arrange(desc(rides))
+  arrange(desc(rides)) |> 
+  left_join(end_locations, c("end_lat", "end_lng")) # Add available station names
 
 casual_dest |> 
+  relocate(end_station_id, end_station_name) |> 
+  head()
+```
+
+```{r}
+casual_dest |> 
   head(20) |> 
-  left_join(end_locations, c("end_lat", "end_lng")) |> 
   leaflet() |> 
 	addTiles() |>
 	addCircles(
@@ -366,23 +433,22 @@ casual_dest |>
 	  popup = ~end_station_name
 	)
 ```
+
+The top 20 destinations for casual riders are shown above. They all appear to be mostly recreational areas by the waterfront.
 
 ### Members
 
-Top 20 destinations for members
-
 ```{r}
-#| echo: false
-
-member_dest <- end |> 
+member_dest <- end_trips_n |> 
   filter(member_casual == "Member") |> 
   group_by(end_lat, end_lng) |> 
   summarise(rides = sum(n)) |> 
-  arrange(desc(rides))
+  arrange(desc(rides)) |> 
+  left_join(end_locations, c("end_lat", "end_lng"))
+
 
 member_dest |> 
   head(20) |> 
-  left_join(end_locations, c("end_lat", "end_lng")) |> 
   leaflet() |> 
 	addTiles() |>
 	addCircles(
@@ -393,4 +459,22 @@ member_dest |>
 	  popup = ~end_station_name
 	)
 ```
+
+The top 20 destinations for members are shown above. They include the downtown area, transit centers, and The University of Chicago. 
+
+# Summary
+
+There are clear differences between the trips of casual riders and members. 
+
+- Casual rider trips occur more frequently during weekends and warmer months. Their trips also tend to be longer during weekends and warmer months. The most common destinations are recreational areas on the waterfront. 
+- Member trips make up the majority of bike trips. These trips are shorter than casual rider trips overall. Member trips occur more frequently during weekdays, and have a spike in the morning hours. Their trips are consistent in duration throughout the day and week, with only a small increase during the warmer months. The most popular destinations are in the downtown area, near transit centers, and The University of Chicago.
+
+All together, this suggests that casual riders tend to take trips mainly for leisure while members tend to take trips for daily commuting.
+
+# Recommendations
+
+Given that casual riders are already aware of the Cyclistic program, converting them to members is a matter of convincing them of the benefits of the membership. Some ideas are:
+
+- Convince casual riders to daily bike commuters by emphasizing the benefits of commuting by bike (widespread availability, cost, speed, healthy physical activity, etc.) instead of by other forms of transportation.
+- Create promotional deals for members for leisure activities and destinations (the aquarium, museums, restaurants, etc.).
 
